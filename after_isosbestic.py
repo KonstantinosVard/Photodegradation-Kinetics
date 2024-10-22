@@ -111,28 +111,41 @@ class afterisosbestic:
         if save:
             plt.savefig(f'{save}.png', bbox_inches='tight')
             
+            
+    def plot_data(self): # Plotting experimental data
+        mpl.rc('font', family='Times New Roman')
+
+        font = {'color': 'maroon',
+                'weight': 'normal',
+                'size': 14
+                }
+
+        plt.plot(self.wavelengths, self.absorptions, label=self.time[0].detach().numpy())
+        plt.title(f'Experimental Data of the Irridation', fontsize=18, y=1.03, color="maroon")
+        plt.xlabel('Wavelength (nm)', fontdict=font)
+        plt.ylabel('Absorbance (nm)', fontdict=font)
+        plt.legend()
+        plt.grid(color="gray", linestyle='--', linewidth=0.7, alpha=1)
+        plt.xlim(self.wavelengths.min(), self.wavelengths.max())
+        plt.ylim(ymin=0)
         
     def plot_predictions(self, x=None): # Plotting predictions
         if x is None:
             x = self.time[0]
+        
         preds = self.forward(x)
         plt.plot(self.wavelengths, preds.detach().numpy(), label=x.detach().numpy())
         plt.legend()
         plt.xlim(self.wavelengths.min(), self.wavelengths.max())
         plt.ylim(ymin=0)
         
-    def plot_data(self): # Plotting experimental data
-        plt.plot(self.wavelengths, self.absorptions, label=self.time[0].detach().numpy())
-        plt.legend()
-        plt.xlim(self.wavelengths.min(), self.wavelengths.max())
-        plt.ylim(ymin=0)
         
     def plot_reagent(self, x=None): # Plotting data for the degradation of the reagent
         if x is None:
             x = self.time[0]
         preds = self.forward_reagent(x)
         plt.xlim(self.wavelengths.min(), self.wavelengths.max())
-        plt.ylim(ymin=0)
+        plt.ylim(ymin=0, ymax=preds.max().item() * 1.05)
         plt.plot(self.wavelengths, preds.detach().numpy(), label=x.detach().numpy())
         plt.legend()
         
@@ -141,9 +154,51 @@ class afterisosbestic:
             x = self.time[0]
         preds = self.forward_product(x)
         plt.xlim(self.wavelengths.min(), self.wavelengths.max())
-        plt.ylim(ymin=0)
+        plt.ylim(ymin=0, ymax=preds.max().item() * 1.05)
         plt.plot(self.wavelengths, preds.detach().numpy(), label=x.detach().numpy())
-        plt.legend()
+        plt.legend()  
+        
+    def plot_all(self, x=None):
+        def plot_single(ax, x, preds, title, font): # Helper function that formats each subplot
+            ax.plot(self.wavelengths, preds.detach().numpy(), label=x.detach().numpy())
+            ax.set_title(title, fontsize=18, y=1.03, color="maroon")
+            ax.set_xlabel('Wavelength (nm)', fontdict=font)
+            ax.set_ylabel('Absorbance (nm)', fontdict=font)
+            ax.grid(color="gray", linestyle='--', linewidth=0.7, alpha=1)
+            ax.legend()
+            ax.set_xlim(self.wavelengths.min(), self.wavelengths.max())
+            ax.set_ylim(ymin=0) 
+            
+        if x is None:
+            x = self.time[0]
+
+        mpl.rc('font', family='Times New Roman')
+
+        font = {'color': 'maroon',
+                'weight': 'normal',
+                'size': 14
+                }
+
+        # Create a figure with three subplots (1 row, 3 columns)
+        fig, axes = plt.subplots(1, 3, figsize=(18, 6)) 
+        fig.tight_layout(pad=4.0)  
+
+        # Plot 1: Predictions
+        preds = self.forward(x)
+        plot_single(axes[0], x, preds, 'Prediction of the Irradiation', font)
+
+        # Plot 2: Reagent
+        preds_reagent = self.forward_reagent(x)
+        plot_single(axes[1], x, preds_reagent, 'Degradation of the Reagent', font)
+        axes[1].set_ylim(ymax=preds_reagent.max().item() * 1.05)
+
+        # Plot 3: Product
+        preds_product = self.forward_product(x)
+        plot_single(axes[2], x, preds_product, 'Formation of the Product', font)
+        axes[2].set_ylim(ymax=preds_product.max().item() * 1.05)
+
+        plt.show()
+
         
     def plot_loss(self): # Plotting loss per epoch
         plt.plot(range(0,len(self.loss_list)), self.loss_list);
