@@ -51,20 +51,40 @@ class afterisosbestic:
         abspred =  self.abs2 * (1 - torch.exp(-self.k * time))*torch.exp(-self.k1 * time)
         return abspred
     
-    def fit(self, epochs = 5_000, lr=1e-3):
+#     def fit(self, epochs = 5_000, lr=1e-3):
         
+#         MSE = nn.MSELoss(reduction='sum')
+#         optimizer = optim.Adam([self.a, self.k, self.abs2, self.k1], lr = lr)
+
+#         for epoch in range(epochs):
+#             optimizer.zero_grad() # Make zero the partial derivates in each epoch
+#             abspred = self.forward(self.time) # Forward pass
+#             mse_loss = MSE(abspred, self.absorptions) # Calculate and print Mean Squared Error (MSE)
+#             self.loss_list.append(mse_loss.detach())
+#             mse_loss.backward() # Backward pass (compute the partial derivates for this epoch)            
+#             optimizer.step() # Update the model's parameters using a gradient descent family of methods (example Adam, Stochastic gradient descent etc.)
+#             if epoch % 1000 == 0: 
+#                 print(f'Epoch = {epoch}, MSE = {mse_loss.item()}')
+                
+    def fit(self, epochs=5_000, lr=1e-3, lambda_k=1e-2):
         MSE = nn.MSELoss(reduction='sum')
-        optimizer = optim.Adam([self.a, self.k, self.abs2, self.k1], lr = lr)
+        optimizer = optim.Adam([self.a, self.k, self.abs2, self.k1], lr=lr)
 
         for epoch in range(epochs):
-            optimizer.zero_grad() # Make zero the partial derivates in each epoch
-            abspred = self.forward(self.time) # Forward pass
-            mse_loss = MSE(abspred, self.absorptions) # Calculate and print Mean Squared Error (MSE)
-            self.loss_list.append(mse_loss.detach())
-            mse_loss.backward() # Backward pass (compute the partial derivates for this epoch)            
-            optimizer.step() # Update the model's parameters using a gradient descent family of methods (example Adam, Stochastic gradient descent etc.)
-            if epoch % 1000 == 0: 
-                print(f'Epoch = {epoch}, MSE = {mse_loss.item()}')
+            optimizer.zero_grad()  # Make zero the partial derivatives in each epoch
+            abspred = self.forward(self.time)  # Forward pass
+            mse_loss = MSE(abspred, self.absorptions)  # Calculate MSE
+
+            # Add ridge regularization term for self.k
+            ridge_loss = lambda_k * torch.norm(self.k, p=2) ** 2
+            total_loss = mse_loss + ridge_loss
+
+            self.loss_list.append(total_loss.detach())  # Save the total loss
+            total_loss.backward()  # Backward pass (compute gradients for the total loss)
+            optimizer.step()  # Update parameters using optimizer
+
+            if epoch % 1000 == 0:
+                print(f'Epoch = {epoch}, MSE = {mse_loss.item()}, Ridge Loss = {ridge_loss.item()}, Total Loss = {total_loss.item()}')
 
                 
     def plot_model(self, λ, save=False): # function to plot the behaviour on a specific wavelength of the spectrum
